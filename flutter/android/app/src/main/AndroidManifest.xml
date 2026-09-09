@@ -1,0 +1,148 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         PERMISSÕES DE ALARME EXATO
+         Android 12+: SCHEDULE_EXACT_ALARM (revogável pelo usuário)
+         Android 14+: USE_EXACT_ALARM (auto-granted para alarm apps)
+         ═══════════════════════════════════════════════════════════════════ -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         PERMISSÕES DE BOOT — re-armar alarmes após reiniciar o celular
+         ═══════════════════════════════════════════════════════════════════ -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         PERMISSÕES DE NOTIFICAÇÃO
+         Android 13+: POST_NOTIFICATIONS (runtime permission)
+         USE_FULL_SCREEN_INTENT: tela cheia quando tela bloqueada
+         ═══════════════════════════════════════════════════════════════════ -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         PERMISSÕES DE ÁUDIO / VIBRAÇÃO / WAKE
+         ═══════════════════════════════════════════════════════════════════ -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         PERMISSÕES DE FOREGROUND SERVICE
+         FOREGROUND_SERVICE: genérico
+         FOREGROUND_SERVICE_MEDIA_PLAYBACK: exigido pelo alarm package
+         ═══════════════════════════════════════════════════════════════════ -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         PERMISSÃO DE BATERIA — ignorar otimização de bateria
+         (o usuário precisa aprovar manualmente)
+         ═══════════════════════════════════════════════════════════════════ -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         PERMISSÃO DE VOZ (reconhecimento de fala)
+         ═══════════════════════════════════════════════════════════════════ -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <application
+        android:label="Agenda Amiga"
+        android:name="${applicationName}"
+        android:icon="@mipmap/ic_launcher">
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             MAIN ACTIVITY — showWhenLocked + turnScreenOn para alarmes
+             ═══════════════════════════════════════════════════════════════ -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
+            <meta-data
+              android:name="io.flutter.embedding.android.NormalTheme"
+              android:resource="@style/NormalTheme"
+              />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             FLUTTER EMBEDDING
+             ═══════════════════════════════════════════════════════════════ -->
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             ALARM PACKAGE — AlarmReceiver + BootReceiver + ForegroundService
+             Estes são MANDATÓRIOS para o alarm package funcionar.
+             O AlarmService usa foregroundServiceType="mediaPlayback" para
+             tocar áudio via STREAM_ALARM mesmo com app fechado.
+             ═══════════════════════════════════════════════════════════════ -->
+        <receiver
+            android:name="com.gdelataillade.alarm.alarm.AlarmReceiver"
+            android:exported="true" />
+
+        <receiver
+            android:name="com.gdelataillade.alarm.alarm.BootReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <service
+            android:name="com.gdelataillade.alarm.alarm.AlarmService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             FLUTTER LOCAL NOTIFICATIONS — receivers (fallback)
+             ═══════════════════════════════════════════════════════════════ -->
+        <receiver
+            android:exported="false"
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
+
+        <receiver
+            android:exported="false"
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
+            </intent-filter>
+        </receiver>
+
+    </application>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         QUERIES — necessárias para Package Visibility (Android 11+)
+         ═══════════════════════════════════════════════════════════════════ -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.PROCESS_TEXT"/>
+            <data android:mimeType="text/plain"/>
+        </intent>
+        <intent>
+            <action android:name="android.speech.RecognitionService"/>
+        </intent>
+        <!-- Para ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS -->
+        <intent>
+            <action android:name="android.settings.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
+            <data android:scheme="package"/>
+        </intent>
+    </queries>
+
+</manifest>

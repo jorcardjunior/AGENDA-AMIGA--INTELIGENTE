@@ -1,0 +1,88 @@
+name: Build iOS IPA & Android APK
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    name: Build iOS (IPA / Payload)
+    runs-on: macos-14
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.29.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Get Dependencies
+        working-directory: flutter
+        run: flutter pub get
+
+      - name: Run Tests
+        working-directory: flutter
+        run: flutter test
+
+      - name: Build iOS App (No Codesign for testing/sideloading)
+        working-directory: flutter
+        run: |
+          flutter build ios --release --no-codesign
+          cd build/ios/iphoneos
+          mkdir -p Payload
+          cp -r Runner.app Payload/
+          zip -r AgendaAmiga-iOS.ipa Payload
+
+      - name: Upload iOS IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AgendaAmiga-iOS-IPA
+          path: flutter/build/ios/iphoneos/AgendaAmiga-iOS.ipa
+          retention-days: 14
+
+  build-android:
+    name: Build Android (APK)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.29.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Get Dependencies
+        working-directory: flutter
+        run: flutter pub get
+
+      - name: Build APK
+        working-directory: flutter
+        run: flutter build apk --release
+
+      - name: Upload Android APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AgendaAmiga-Android-APK
+          path: flutter/build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 14

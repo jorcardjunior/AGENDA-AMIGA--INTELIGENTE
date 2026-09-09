@@ -1,0 +1,6 @@
+{
+  "name": "Agenda Inteligente Acessível",
+  "description": "Agenda inteligente por voz com alertas em tempo real, priorização de tarefas e interface simplificada para idosos.",
+  "requestFramePermissions": ["microphone", "geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

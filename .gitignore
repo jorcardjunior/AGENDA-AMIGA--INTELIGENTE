@@ -1,0 +1,39 @@
+# Build & binaries
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+*.apk
+*.aab
+*.ipa
+
+# Flutter
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+flutter/build/
+flutter/.dart_tool/
+flutter/.packages
+flutter/.pub-cache/
+flutter/.pub/
+
+# Android
+flutter/android/.gradle/
+flutter/android/local.properties
+flutter/android/app/build/
+
+# iOS
+flutter/ios/.symlinks/
+flutter/ios/Pods/
+flutter/ios/Podfile.lock
+flutter/ios/Flutter/Generated.xcconfig
+flutter/ios/Flutter/app.flx
+flutter/ios/Flutter/app.zip
+flutter/ios/Flutter/flutter_assets/
+flutter/ios/Flutter/Flutter.framework
+flutter/ios/Flutter/Flutter.podspec
