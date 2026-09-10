@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:alarm/alarm.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -9,39 +10,27 @@ import 'alarm_scheduler.dart';
 import '../services/notification_service.dart';
 
 /// Watchdog que mantém os alarmes vivos em background.
-///
-/// PROBLEMA QUE RESOLVE:
-/// Android (e OEMs como Realme/Xiaomi/Samsung) periodicamente cancela alarmes
-/// do AlarmManager ou congela processos em background. O `alarm` package usa
-/// Foreground Service (mais resistente), mas OEMs agressivos podem matar até
-/// isso. Este watchdog é a rede de segurança.
-///
-/// ESTRATÉGIA (IMPORTANTE — não conflita com o `alarm` package):
-/// O watchdog NÃO recria alarmes do zero. Em vez disso:
-/// 1. Lê os compromissos do SharedPreferences
-/// 2. Para cada um, verifica se o alarme ainda existe no `alarm` package
-/// 3. SOMENTE se o alarme NÃO existe mais, re-agenda
-///
-/// Isso evita race conditions onde o WorkManager recriaria alarmes que o
-/// Foreground Service já está tocando, causando duplicatas ou conflitos.
 class AlarmWatchdog {
   static const String taskName = 'agenda_amiga_rearm';
 
   /// Registra a tarefa periódica. Chamar UMA VEZ após NotificationService.init().
   static Future<void> register() async {
-    await Workmanager().initialize(alarmWatchdogCallbackDispatcher);
-    await Workmanager().registerPeriodicTask(
-      taskName,
-      taskName,
-      frequency: const Duration(minutes: 15),
-      constraints: Constraints(
-        networkType: NetworkType.notRequired,
-        requiresBatteryNotLow: false,
-      ),
-      existingWorkPolicy: ExistingPeriodicWorkPolicy.replace,
-      backoffPolicy: BackoffPolicy.exponential,
-      backoffPolicyDelay: const Duration(minutes: 15),
-    );
+    if (!Platform.isAndroid) return;
+    try {
+      await Workmanager().initialize(alarmWatchdogCallbackDispatcher);
+      await Workmanager().registerPeriodicTask(
+        taskName,
+        taskName,
+        frequency: const Duration(minutes: 15),
+        constraints: Constraints(
+          networkType: NetworkType.not_required,
+          requiresBatteryNotLow: false,
+        ),
+        existingWorkPolicy: ExistingWorkPolicy.replace,
+        backoffPolicy: BackoffPolicy.exponential,
+        backoffPolicyDelay: const Duration(minutes: 15),
+      );
+    } catch (_) {}
   }
 
   /// Verifica e re-armazena alarmes faltantes.
