@@ -2271,3 +2271,405 @@ IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context
     );
   }
 }
+
+// ---------------------------------------------------------------------------
+// MODAL DE TRAVA DA AGENDA (PIN DE 4 DÍGITOS + RECUPERAÇÃO)
+// ---------------------------------------------------------------------------
+class LockPinModal extends StatefulWidget {
+  final bool isCurrentlyLocked;
+  final String? savedPin;
+  final String? recoveryEmail;
+  final String? recoveryPhone;
+  final void Function(String pin, String email, String phone) onSetupPin;
+  final VoidCallback onUnlock;
+  final VoidCallback onLock;
+  final void Function(String) speakText;
+
+  const LockPinModal({
+    super.key,
+    required this.isCurrentlyLocked,
+    required this.savedPin,
+    required this.recoveryEmail,
+    required this.recoveryPhone,
+    required this.onSetupPin,
+    required this.onUnlock,
+    required this.onLock,
+    required this.speakText,
+  });
+
+  @override
+  State<LockPinModal> createState() => _LockPinModalState();
+}
+
+class _LockPinModalState extends State<LockPinModal> {
+  final TextEditingController _pinController = TextEditingController();
+  final TextEditingController _confirmPinController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+
+  String? _errorMessage;
+  bool _showingRecovery = false;
+
+  bool get _hasPinConfigured => widget.savedPin != null && widget.savedPin!.length == 4;
+
+  @override
+  void initState() {
+    super.initState();
+    _emailController.text = widget.recoveryEmail ?? '';
+    _phoneController.text = widget.recoveryPhone ?? '';
+  }
+
+  @override
+  void dispose() {
+    _pinController.dispose();
+    _confirmPinController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    super.dispose();
+  }
+
+  void _handleUnlock() {
+    if (_pinController.text == widget.savedPin) {
+      widget.onUnlock();
+      widget.speakText('Agenda destrancada com sucesso. Você pode editar os compromissos.');
+      Navigator.pop(context);
+    } else {
+      setState(() {
+        _errorMessage = 'PIN incorreto. Tente novamente.';
+      });
+      widget.speakText('PIN incorreto. Tente novamente.');
+    }
+  }
+
+  void _handleSetupPin() {
+    final pin = _pinController.text.trim();
+    final confirm = _confirmPinController.text.trim();
+
+    if (pin.length != 4 || int.tryParse(pin) == null) {
+      setState(() => _errorMessage = 'O PIN deve ter exatamente 4 números.');
+      return;
+    }
+    if (pin != confirm) {
+      setState(() => _errorMessage = 'Os dois PINs digitados não são iguais.');
+      return;
+    }
+
+    final email = _emailController.text.trim();
+    final phone = _phoneController.text.trim();
+
+    widget.onSetupPin(pin, email, phone);
+    widget.speakText('PIN de proteção configurado e agenda trancada!');
+    Navigator.pop(context);
+  }
+
+  Future<void> _sendRecoveryEmail() async {
+    final email = widget.recoveryEmail ?? _emailController.text.trim();
+    if (email.isEmpty) {
+      setState(() => _errorMessage = 'Nenhum email de recuperação cadastrado.');
+      return;
+    }
+    final uri = Uri.parse('mailto:$email?subject=Recuperacao de PIN - Agenda Amiga&body=Seu PIN de acesso da Agenda Amiga é: ${widget.savedPin}');
+    try {
+      await launchUrl(uri);
+    } catch (_) {
+      setState(() => _errorMessage = 'Não foi possível abrir o app de email.');
+    }
+  }
+
+  Future<void> _sendRecoverySms() async {
+    final phone = widget.recoveryPhone ?? _phoneController.text.trim();
+    if (phone.isEmpty) {
+      setState(() => _errorMessage = 'Nenhum telefone de recuperação cadastrado.');
+      return;
+    }
+    final uri = Uri.parse('sms:$phone?body=Seu PIN de acesso da Agenda Amiga é: ${widget.savedPin}');
+    try {
+      await launchUrl(uri);
+    } catch (_) {
+      setState(() => _errorMessage = 'Não foi possível abrir o app de SMS.');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: widget.isCurrentlyLocked ? Colors.amber.shade100 : Colors.teal.shade100,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  widget.isCurrentlyLocked ? Icons.lock : Icons.lock_open,
+                  color: widget.isCurrentlyLocked ? Colors.amber.shade900 : Colors.teal.shade800,
+                  size: 36,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              !_hasPinConfigured
+                  ? 'Criar Trava de Proteção'
+                  : (widget.isCurrentlyLocked ? 'Agenda Trancada' : 'Trava da Agenda'),
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              !_hasPinConfigured
+                  ? 'Crie um PIN de 4 números para evitar que crianças ou toques acidentais apaguem seus compromissos.'
+                  : (widget.isCurrentlyLocked
+                      ? 'Digite seu PIN de 4 números para liberar edição e exclusão de compromissos.'
+                      : 'Sua agenda está destrancada. Deseja trancá-la agora?'),
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 12.5, color: Colors.black54),
+            ),
+            const SizedBox(height: 20),
+
+            if (_errorMessage != null) ...[
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.red.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.error_outline, size: 16, color: Colors.red.shade700),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _errorMessage!,
+                        style: TextStyle(color: Colors.red.shade800, fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+
+            if (!_hasPinConfigured) ...[
+              TextField(
+                controller: _pinController,
+                keyboardType: TextInputType.number,
+                maxLength: 4,
+                obscureText: true,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 22, letterSpacing: 10, fontWeight: FontWeight.bold),
+                decoration: InputDecoration(
+                  labelText: 'Digite um PIN (4 números)',
+                  counterText: '',
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _confirmPinController,
+                keyboardType: TextInputType.number,
+                maxLength: 4,
+                obscureText: true,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 22, letterSpacing: 10, fontWeight: FontWeight.bold),
+                decoration: InputDecoration(
+                  labelText: 'Confirme o PIN',
+                  counterText: '',
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Recuperação (caso você esqueça o PIN):',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black87),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  labelText: 'Email de recuperação (opcional)',
+                  prefixIcon: const Icon(Icons.email_outlined, size: 18),
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _phoneController,
+                keyboardType: TextInputType.phone,
+                decoration: InputDecoration(
+                  labelText: 'Telefone/WhatsApp (opcional)',
+                  prefixIcon: const Icon(Icons.phone_outlined, size: 18),
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+              ),
+              const SizedBox(height: 20),
+              FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.teal.shade700,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+                icon: const Icon(Icons.check_circle_outline),
+                label: const Text('Salvar PIN e Proteger Agenda', style: TextStyle(fontWeight: FontWeight.bold)),
+                onPressed: _handleSetupPin,
+              ),
+            ]
+            else if (widget.isCurrentlyLocked) ...[
+              if (!_showingRecovery) ...[
+                TextField(
+                  controller: _pinController,
+                  keyboardType: TextInputType.number,
+                  maxLength: 4,
+                  obscureText: true,
+                  autofocus: true,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 24, letterSpacing: 12, fontWeight: FontWeight.bold),
+                  decoration: InputDecoration(
+                    labelText: 'Digite seu PIN de 4 dígitos',
+                    counterText: '',
+                    filled: true,
+                    fillColor: Colors.grey.shade50,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.teal.shade700,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  icon: const Icon(Icons.lock_open),
+                  label: const Text('Destrancar Agenda', style: TextStyle(fontWeight: FontWeight.bold)),
+                  onPressed: _handleUnlock,
+                ),
+                const SizedBox(height: 10),
+                TextButton(
+                  onPressed: () => setState(() => _showingRecovery = true),
+                  child: const Text('Esqueci meu PIN (Recuperar)', style: TextStyle(color: Colors.blueGrey)),
+                ),
+              ] else ...[
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.blue.shade200),
+                  ),
+                  child: Column(
+                    children: [
+                      const Text(
+                        'Recuperação de Acesso',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.blue),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        widget.recoveryEmail != null && widget.recoveryEmail!.isNotEmpty
+                            ? 'Email cadastrado: ${widget.recoveryEmail}'
+                            : (widget.recoveryPhone != null && widget.recoveryPhone!.isNotEmpty
+                                ? 'Telefone: ${widget.recoveryPhone}'
+                                : 'Você pode redefinir o PIN se tiver acesso ao celular.'),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 12, color: Colors.black87),
+                      ),
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          if (widget.recoveryEmail != null && widget.recoveryEmail!.isNotEmpty)
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                icon: const Icon(Icons.email, size: 16),
+                                label: const Text('Via Email', style: TextStyle(fontSize: 11)),
+                                onPressed: _sendRecoveryEmail,
+                              ),
+                            ),
+                          if (widget.recoveryEmail != null && widget.recoveryEmail!.isNotEmpty && widget.recoveryPhone != null)
+                            const SizedBox(width: 8),
+                          if (widget.recoveryPhone != null && widget.recoveryPhone!.isNotEmpty)
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                icon: const Icon(Icons.sms, size: 16),
+                                label: const Text('Via SMS', style: TextStyle(fontSize: 11)),
+                                onPressed: _sendRecoverySms,
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      TextButton.icon(
+                        icon: const Icon(Icons.lock_reset, size: 16, color: Colors.red),
+                        label: const Text('Redefinir PIN agora', style: TextStyle(color: Colors.red, fontSize: 12)),
+                        onPressed: () {
+                          widget.onSetupPin('', '', '');
+                          widget.onUnlock();
+                          widget.speakText('Trava de segurança removida.');
+                          Navigator.pop(context);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextButton(
+                  onPressed: () => setState(() => _showingRecovery = false),
+                  child: const Text('Voltar para digitar PIN'),
+                ),
+              ],
+            ]
+            else ...[
+              FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.amber.shade800,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+                icon: const Icon(Icons.lock),
+                label: const Text('Trancar Agenda Agora', style: TextStyle(fontWeight: FontWeight.bold)),
+                onPressed: () {
+                  widget.onLock();
+                  widget.speakText('Agenda trancada! Compromissos protegidos contra alterações.');
+                  Navigator.pop(context);
+                },
+              ),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.edit),
+                label: const Text('Alterar PIN de Segurança'),
+                onPressed: () {
+                  setState(() {
+                    _pinController.clear();
+                    _confirmPinController.clear();
+                  });
+                  widget.onSetupPin('', '', '');
+                },
+              ),
+            ],
+
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Fechar', style: TextStyle(color: Colors.grey)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

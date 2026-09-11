@@ -26,6 +26,13 @@ flutter/.pub/
 flutter/android/.gradle/
 flutter/android/local.properties
 flutter/android/app/build/
+flutter/android/key.properties
+**/*.jks
+**/*.keystore
+
+# Pastas de assinatura/chaves (não versionar)
+.android/
+C:/src/android-keystore/
 
 # iOS
 flutter/ios/.symlinks/

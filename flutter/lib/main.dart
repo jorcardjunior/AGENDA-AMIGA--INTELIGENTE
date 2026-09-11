@@ -17,8 +17,8 @@ import 'services/permission_guard.dart';
 import 'utils/date_formatter.dart';
 import 'widgets/commitment_list.dart';
 import 'widgets/modals.dart';
+import 'widgets/monthly_calendar.dart';
 import 'widgets/voice_assistant.dart';
-import 'widgets/weekly_calendar.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -72,6 +72,12 @@ class _HomeScreenState extends State<HomeScreen> {
   int _alarmCount24h = 0;
   String? _savedVoice;
 
+  // Trava de Segurança da Agenda
+  bool _isAgendaLocked = false;
+  String? _agendaPin;
+  String? _recoveryEmail;
+  String? _recoveryPhone;
+
   @override
   void initState() {
     super.initState();
@@ -95,6 +101,10 @@ class _HomeScreenState extends State<HomeScreen> {
     _nextId = prefs.getInt('nextId') ?? (_commitments.isEmpty ? 1 : _commitments.length + 1);
     _lastBriefingDate = prefs.getString('lastBriefingDate');
     _savedVoice = prefs.getString('ttsVoice');
+    _isAgendaLocked = prefs.getBool('isAgendaLocked') ?? false;
+    _agendaPin = prefs.getString('agendaPin');
+    _recoveryEmail = prefs.getString('agendaRecoveryEmail');
+    _recoveryPhone = prefs.getString('agendaRecoveryPhone');
 
     try {
       await _tts.setLanguage('pt-BR');
@@ -568,6 +578,55 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _openLockModal() {
+    showDialog(
+      context: context,
+      builder: (_) => LockPinModal(
+        isCurrentlyLocked: _isAgendaLocked,
+        savedPin: _agendaPin,
+        recoveryEmail: _recoveryEmail,
+        recoveryPhone: _recoveryPhone,
+        speakText: _speak,
+        onSetupPin: (pin, email, phone) async {
+          setState(() {
+            _agendaPin = pin.isEmpty ? null : pin;
+            _recoveryEmail = email.isEmpty ? null : email;
+            _recoveryPhone = phone.isEmpty ? null : phone;
+            _isAgendaLocked = pin.isNotEmpty;
+          });
+          final prefs = await SharedPreferences.getInstance();
+          if (pin.isEmpty) {
+            await prefs.remove('agendaPin');
+            await prefs.remove('isAgendaLocked');
+          } else {
+            await prefs.setString('agendaPin', pin);
+            await prefs.setBool('isAgendaLocked', true);
+          }
+          if (email.isEmpty) {
+            await prefs.remove('agendaRecoveryEmail');
+          } else {
+            await prefs.setString('agendaRecoveryEmail', email);
+          }
+          if (phone.isEmpty) {
+            await prefs.remove('agendaRecoveryPhone');
+          } else {
+            await prefs.setString('agendaRecoveryPhone', phone);
+          }
+        },
+        onLock: () async {
+          setState(() => _isAgendaLocked = true);
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool('isAgendaLocked', true);
+        },
+        onUnlock: () async {
+          setState(() => _isAgendaLocked = false);
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool('isAgendaLocked', false);
+        },
+      ),
+    );
+  }
+
   void _openTechnicalReportModal() {
     showDialog(context: context, builder: (_) => const TechnicalReportModal());
   }
@@ -639,7 +698,7 @@ class _HomeScreenState extends State<HomeScreen> {
               isSpeaking: _isSpeaking,
             ),
             const SizedBox(height: 16),
-            WeeklyCalendar(
+            MonthlyCalendar(
               commitments: _commitments,
               selectedDate: _selectedDate,
               onSelectDate: (d) => setState(() => _selectedDate = d),
@@ -651,6 +710,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   .where((c) => ScheduleMatcher.occursOn(c, _selectedDate))
                   .toList(),
               selectedDate: _selectedDate,
+              isLocked: _isAgendaLocked,
               onToggleComplete: (id) => _toggleComplete(id),
               onDelete: (id) => _deleteCommitment(id),
               onEdit: (c) => _openEditModal(c),
@@ -841,48 +901,71 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ---------------------------------------------------------------------------
-  // Toolbar — chips with schedule, lock, external link, emergency, tutorial
+  // Toolbar — botões organizados lado a lado, compactos e elegantes
   // ---------------------------------------------------------------------------
   Widget _toolbar() {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        _toolChip(Icons.schedule, 'Agendar (Voz)', () {
-          _speak('Diga o compromisso que deseja agendar.');
-        }),
-        _toolChip(Icons.lock_outline, 'Fechar Agenda', () {
-          _speak('Agenda trancada. Nenhum compromisso será modificado.');
-        }),
-        _toolChip(Icons.open_in_new, 'Abrir Calendário', _openSyncModal),
-        _toolChip(Icons.volume_off, 'Parar Alarme', _stopSpeech),
-        _toolChip(Icons.report_outlined, 'Relatório', _openTechnicalReportModal),
-        _toolChip(Icons.record_voice_over, 'Voz', _openVoicePickerModal),
-        _toolChip(Icons.build_circle, 'Diagnóstico', _openDiagnosticsModal),
-      ],
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      child: Row(
+        children: [
+          // Botão Trava da Agenda com status visual
+          _toolChip(
+            _isAgendaLocked ? Icons.lock : Icons.lock_open,
+            _isAgendaLocked ? 'Agenda Trancada' : 'Trava / PIN',
+            _openLockModal,
+            bgColor: _isAgendaLocked ? Colors.amber.shade50 : Colors.white,
+            borderColor: _isAgendaLocked ? Colors.amber.shade400 : Colors.teal.shade200,
+            iconColor: _isAgendaLocked ? Colors.amber.shade800 : Colors.teal.shade700,
+            textColor: _isAgendaLocked ? Colors.amber.shade900 : Colors.teal.shade800,
+          ),
+          const SizedBox(width: 8),
+          _toolChip(Icons.record_voice_over, 'Voz', _openVoicePickerModal),
+          const SizedBox(width: 8),
+          _toolChip(Icons.build_circle, 'Diagnóstico', _openDiagnosticsModal),
+          const SizedBox(width: 8),
+          _toolChip(Icons.report_outlined, 'Relatório', _openTechnicalReportModal),
+          const SizedBox(width: 8),
+          _toolChip(Icons.sync, 'Sincronizar', _openSyncModal),
+        ],
+      ),
     );
   }
 
-  Widget _toolChip(IconData icon, String label, VoidCallback onTap) {
+  Widget _toolChip(
+    IconData icon,
+    String label,
+    VoidCallback onTap, {
+    Color? bgColor,
+    Color? borderColor,
+    Color? iconColor,
+    Color? textColor,
+  }) {
     return Material(
-      color: Colors.white,
+      color: bgColor ?? Colors.white,
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(14),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.teal.shade200),
+            border: Border.all(color: borderColor ?? Colors.teal.shade200),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 16, color: Colors.teal.shade700),
+              Icon(icon, size: 16, color: iconColor ?? Colors.teal.shade700),
               const SizedBox(width: 6),
-              Text(label,
-                  style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: Colors.teal.shade800)),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: textColor ?? Colors.teal.shade800,
+                ),
+              ),
             ],
           ),
         ),

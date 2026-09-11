@@ -23,10 +23,10 @@ class AlarmWatchdog {
         taskName,
         frequency: const Duration(minutes: 15),
         constraints: Constraints(
-          networkType: NetworkType.not_required,
+          networkType: NetworkType.notRequired,
           requiresBatteryNotLow: false,
         ),
-        existingWorkPolicy: ExistingWorkPolicy.replace,
+        existingWorkPolicy: ExistingPeriodicWorkPolicy.replace,
         backoffPolicy: BackoffPolicy.exponential,
         backoffPolicyDelay: const Duration(minutes: 15),
       );

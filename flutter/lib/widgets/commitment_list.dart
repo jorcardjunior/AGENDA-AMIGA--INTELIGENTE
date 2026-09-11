@@ -8,6 +8,7 @@ enum CommitFilter { all, pending, completed }
 class CommitmentList extends StatefulWidget {
   final List<Commitment> commitments;
   final String selectedDate;
+  final bool isLocked;
   final void Function(String) onToggleComplete;
   final void Function(String) onDelete;
   final void Function(Commitment) onEdit;
@@ -17,6 +18,7 @@ class CommitmentList extends StatefulWidget {
     super.key,
     required this.commitments,
     required this.selectedDate,
+    this.isLocked = false,
     required this.onToggleComplete,
     required this.onDelete,
     required this.onEdit,
@@ -193,7 +195,16 @@ const Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               GestureDetector(
-                onTap: () => widget.onToggleComplete(item.id),
+                onTap: () {
+                  if (widget.isLocked) {
+                    widget.speakText('Agenda trancada. Destranque com seu PIN para alterar.');
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('🔒 Agenda trancada. Destranque com o PIN para alterar status.')),
+                    );
+                    return;
+                  }
+                  widget.onToggleComplete(item.id);
+                },
                 child: Container(
                   width: 42,
                   height: 42,
@@ -277,12 +288,30 @@ _chip(Icons.calendar_today, item.date),
                     'Compromisso: ${item.title}, agendado para o dia ${DateFormatter.formatNaturalDate(item.date)} às ${DateFormatter.formatNaturalTime(item.time)}. Frequência: ${item.recurrence ?? 'Único'}. Prioridade ${item.priority}.'),
               ),
               IconButton(
-                icon: const Icon(Icons.edit, color: Colors.orange),
-                onPressed: () => widget.onEdit(item),
+                icon: Icon(Icons.edit, color: widget.isLocked ? Colors.grey : Colors.orange),
+                onPressed: () {
+                  if (widget.isLocked) {
+                    widget.speakText('Agenda trancada. Destranque com seu PIN para alterar.');
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('🔒 Agenda trancada. Destranque com o PIN para editar.')),
+                    );
+                    return;
+                  }
+                  widget.onEdit(item);
+                },
               ),
               IconButton(
-                icon: const Icon(Icons.delete, color: Colors.red),
-                onPressed: () => widget.onDelete(item.id),
+                icon: Icon(Icons.delete, color: widget.isLocked ? Colors.grey : Colors.red),
+                onPressed: () {
+                  if (widget.isLocked) {
+                    widget.speakText('Agenda trancada. Destranque com seu PIN para excluir.');
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('🔒 Agenda trancada. Destranque com o PIN para excluir.')),
+                    );
+                    return;
+                  }
+                  widget.onDelete(item.id);
+                },
               ),
             ],
           ),
