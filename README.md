@@ -1,59 +1,47 @@
-# 📱 Agenda Inteligente Acessível (SeniorCare Voice)
-> **Desenvolvido por:** JORCARD_JR  
-> **Versão:** 2.0.0 (Web Full-Stack + Flutter Companion Nativo)
+# Agenda Inteligente Acessivel (SeniorCare Voice)
 
-Agenda inteligente e acessível operada 100% por comandos de voz naturais, desenvolvida com foco prioritário em idosos, pessoas com esquecimento e cuidadores. Conta com alarmes em tempo real 24h, autocorreção de horários com Inteligência Artificial, interface de alto contraste com botões gigantes e modo offline resiliente.
+Voice-driven smart agenda for elderly people and caregivers with real-time alarms, AI schedule corrections and offline mode. Built with React, Express, TypeScript, Google Gemini and a Flutter companion app.
 
----
+## Features
 
-## 📖 Documentação Completa de Reprodução
+- **Voice-First Interaction:** 100% natural voice commands with two-step confirmation ("I will schedule your appointment at 8 AM. Say Yes to confirm or No to cancel").
+- **24h Real-Time Alarms with Voice Dismissal:** Alarms trigger at the scheduled time, vibrate the device, announce the task name and can be dismissed by voice ("Dismiss", "Done", "Ok").
+- **Flexible Timeline via Voice:** Relative scheduling ("take water in 3 minutes", "in 2 hours/days"), monthly recurrence ("company meeting every 10th") and advance reminders ("remind me 3 days before").
+- **Google Gemini AI + Offline Parser:** Corrects time confusions and generates daily summaries with contextual task information.
+- **Embedded Phone Simulator:** Test the exact smartphone experience directly in the browser.
+- **Emergency / Caregiver Button:** Quick alert dispatch and direct dial to the registered caregiver.
+- **Spoken Weekly Calendar:** Tap any day of the week to hear the scheduled commitments.
+- **Offline-First Mode:** Full functionality without internet connection using local data persistence.
 
-Para obter todos os detalhes técnicos, especificações de componentes, fluxos de UI/UX, arquitetura de voz anti-eco, endpoints da API Gemini e instruções passo a passo para que outras IAs ou desenvolvedores reproduzam a aplicação exatamente igual, consulte o arquivo mestre:
+## Prerequisites
 
-👉 **[DOCUMENTACAO_COMPLETA_REPRODUCAO.md](./DOCUMENTACAO_COMPLETA_REPRODUCAO.md)**
+- Node.js 18+
+- (Optional) Flutter SDK for native mobile app
 
-📝 **[MELHORIAS_LOG.md](./MELHORIAS_LOG.md)** — registro de todas as melhorias implementadas (alarme-despertador que acorda a tela, toque no modo silêncio, integração VoxSherpa offline, upgrades de dependências, e agora o **assistente de voz inteligente** que fala o compromisso com contexto, hora natural e bênção de Deus — sem repetir o texto digitado).
+## Running the Web App (React + Express + Gemini)
 
----
-
-## 🚀 Como Executar o Projeto
-
-### Pré-requisitos
-- Node.js 18+ instalado
-- (Opcional) Flutter SDK instalado caso deseje compilar o APK nativo
-
-### Execução Web Full-Stack (React + Express + Gemini)
 ```bash
-# Instalar dependências
 npm install
-
-# Iniciar servidor de desenvolvimento (Porta 3000)
-npm run dev
-
-# Compilar para produção
-npm run build
-
-# Iniciar build de produção
-npm start
+npm run dev        # Development server on port 3000
+npm run build      # Production build
+npm start          # Start production build
 ```
 
-### Execução do Aplicativo Nativo Flutter (Smartphones Android/iOS)
+## Running the Flutter Companion App
+
 ```bash
 cd flutter
 flutter pub get
-flutter run
-# Para gerar o instalador APK para Android:
-flutter build apk --release
+flutter run                   # Run on device/emulator
+flutter build apk --release   # Build Android APK
 ```
 
----
+## Tech Stack
 
-## 🌟 Principais Recursos
-
-- 🎙️ **Comando 100% por Voz & Confirmação em 2 Passos:** Fala natural com verificação do tipo *"Vou agendar seu remédio para às 8h. Diga Sim para confirmar ou Não para cancelar"*.
-- ⏰ **Alarme Real 24h com Desligamento por Voz:** O alarme toca na hora certa, vibra o celular, fala o nome da tarefa e pode ser desligado apenas dizendo *"Desligar"*, *"Já tomei"* ou *"Ok"*.
-- 🕑 **Qualquer Timeline por Voz:** "tomar água daqui 3 minutos", "daqui a 2 horas/dias", recorrência **mensal** ("reunião da empresa todo dia 10" — toca todo dia 10, mesmo mês curto) e **lembrete antecipado** ("me lembre 3 dias antes" — avisa e toca de novo no dia).
-- 🤖 **IA Gemini 2.5 Flash + Parser Offline:** Corrige confusões de horário e gera resumos diários carinhosos com dicas de saúde geriátrica.
-- 📱 **Simulador de Celular Embutido:** Permite testar a experiência exata de um smartphone diretamente pelo navegador.
-- 🆘 **Botão de Emergência / Família:** Envio rápido de alerta e discagem direta para o cuidador cadastrado.
-- 📅 **Calendário Semanal Falado:** Toque em qualquer dia da semana para ouvir os compromissos agendados.
+| Layer | Technology |
+|---|---|
+| Frontend | React, TypeScript, Tailwind CSS |
+| Backend | Express, Node.js |
+| AI | Google Gemini API, offline parser |
+| Mobile | Flutter (Android/iOS companion) |
+| Data | Local storage, offline-first persistence |
